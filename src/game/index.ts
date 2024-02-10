@@ -154,7 +154,7 @@ export class SprawlDie extends Die {
 export default createGame(SprawlPlayer, SprawlBoard, game => {
 
   const { board, action } = game;
-  const { playerActions, loop, eachPlayer } = game.flowCommands;
+  const { playerActions, loop, eachPlayer, everyPlayer, whileLoop } = game.flowCommands;
 
   /**
    * Register all custom pieces and spaces
@@ -180,45 +180,24 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
     }
   }));
 
+  const pp = board.create(Space, 'players');
+
   for (const player of game.players) {
-    const zone = board.create(Space, 'zone', {player});
+    const zone = pp.create(Space, 'zone', {player});
+    const roll = zone.create(Space, 'roll', {player});
+    roll.onEnter(Die, d => d.roll());
     const cup = zone.create(Space, 'cup', { player });
     cup.onEnter(Die, d => d.roll());                          //  would like to just 'obscure' the current value
     cup.create(SprawlDie, 'd', { player , twisted: false}).current = 1;
     const reserve = zone.create(Space, 'reserve', { player });
     reserve.onEnter(Die, d => d.roll());
     reserve.createMany(11, SprawlDie, 'd', { player , twisted: false});
-    const roll = zone.create(Space, 'roll', {player});
-    roll.onEnter(Die, d => d.roll());
-    // const mat = board.create(Space, 'mat', { player });
-    // mat.onEnter(Token, t => t.showToAll());
   }
-
-
-
-  // board.create(Space, 'pool');
-  // $.pool.onEnter(Token, t => t.hideFromAll());
-  // $.pool.createMany(game.setting('tokens') - 1, Token, 'blue', { color: 'blue' });
-  // $.pool.create(Token, 'red', { color: 'red' });
 
   /**
    * Define all possible game actions.
    */
   game.defineActions({
-    // take: player => action({
-    //   prompt: 'Choose a token',
-    // }).chooseOnBoard(
-    //   'token', $.pool.all(Token),
-    // ).move(
-    //   'token', player.my('mat')!
-    // ).message(
-    //   `{{player}} drew a {{token}} token.`
-    // ).do(({ token }) => {
-    //   if (token.color === 'red') {
-    //     game.message("{{player}} wins!", { player });
-    //     game.finish(player);
-    //   }
-    // }),
 
     initialStake: player => action({
       prompt: 'Stake your initial claim',
@@ -298,36 +277,24 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         building.putInto(building.player.my('reserve'));
       }
 
-      if (player.my('roll').has(Die)) {
-        console.log('high');
-        game.followUp({name: 'placeBuildings'});
-      } else {
-        console.log('low');
-        // game.followUp({name: 'updateScore'});
-      }
+      // if (player.my('roll').has(Die)) {
+      //   console.log('high hopes');
+      // }
     }),
 
     updateScore: player => action ({
       prompt: "What's it worth to ya?",
-    }).message(
-      "nothing to see here"
-    // ).chooseFrom(
-    //   'ignored', ['yes', 'sure'],
-    //   {prompt: "gonna ignore this" }
-    // ).message(
-    //   `{{ player }} new old score: {{ player.score }}`
-    ).do(() => {
-
-      console.log("doin' a score");
+    }).do(() => {
+      // console.log("doin' a score");
       let score = 0;
 
       $.land.all(Die, {'mine':true}).forEach((d) => {
         if ([2,3,4].includes(d.current)) {
           score += d.current
-          console.log("scoring a ", d.current);
+          // console.log("scoring a ", d.current);
         } else if (6 === d.current) {
           score += d.container(Plot).adjies().flatMap((p) => p.all(Die, {mine: true}).filter((d) => d.current != 6)).length
-          console.log("scoring ", d.container(Plot).adjies().flatMap((p) => p.all(Die, {mine: true}).filter((d) => d.current != 6)).length, " for a 6:", d);
+          // console.log("scoring ", d.container(Plot).adjies().flatMap((p) => p.all(Die, {mine: true}).filter((d) => d.current != 6)).length, " for a 6:", d);
         }});
       console.log("equals ", score, " ... and bonuses");
 
@@ -335,20 +302,20 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         if (d.container(Plot).adjies(
             ).filter((p) => {
                 if (p.has(Die, {mine: true, current: 2})) {
-                  console.log("found ", p);
+                  // console.log("found ", p);
                   return true;
                 }
               }).length > 0
           // .filter((value, index, array) => array.indexOf(value) === index)
           ) {
-          console.log("+road bonus for ", d);
+          // console.log("+road bonus for ", d);
           ++score;
         }
       });
 
       $.land.all(Die, {current: 4}).forEach((d) => {
         if (d.container(Plot).adjies().filter((p) => p.has(Die, {mine: true, current: 3})).length > 0) {
-          console.log("+field bonus for ", d);
+          // console.log("+field bonus for ", d);
           ++score;
         }
       });
@@ -375,7 +342,7 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
     eachPlayer({
       name: 'player',
       do: playerActions({
-        actions: ['initialStake']
+        actions: ['initialStake']   // may not be necessary, now that the edge case of havingnothing on the board is properly handled
       }),
     }),
 
@@ -386,12 +353,20 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
           playerActions({ actions: [
             'rollDice', 'endGame'
           ]}),
-          playerActions({ actions: [
-            'placeBuildings'
-          ]}),
-          playerActions({ actions: [
-            'updateScore'
-          ]}),
+          whileLoop({
+            while: ({player}) => player.my('roll').has(Die),
+            do: playerActions({ actions: [
+              'placeBuildings'
+            ]}),
+          }),
+          everyPlayer({
+            name: 'player',
+            do: [
+              playerActions({ actions: [
+                'updateScore'
+              ]}),
+            ],
+          }),
         ], 
       })
     )
