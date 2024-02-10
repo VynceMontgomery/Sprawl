@@ -276,10 +276,6 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         });
         building.putInto(building.player.my('reserve'));
       }
-
-      // if (player.my('roll').has(Die)) {
-      //   console.log('high hopes');
-      // }
     }),
 
     updateScore: player => action ({
@@ -296,32 +292,19 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
           score += d.container(Plot).adjies().flatMap((p) => p.all(Die, {mine: true}).filter((d) => d.current != 6)).length
           // console.log("scoring ", d.container(Plot).adjies().flatMap((p) => p.all(Die, {mine: true}).filter((d) => d.current != 6)).length, " for a 6:", d);
         }});
-      console.log("equals ", score, " ... and bonuses");
 
-      $.land.all(Die, {mine: false}).forEach((d) => {
-        if (d.container(Plot).adjies(
-            ).filter((p) => {
-                if (p.has(Die, {mine: true, current: 2})) {
-                  // console.log("found ", p);
-                  return true;
-                }
-              }).length > 0
-          // .filter((value, index, array) => array.indexOf(value) === index)
-          ) {
-          // console.log("+road bonus for ", d);
-          ++score;
-        }
-      });
+      const roadBonus = $.land.all(Die, {mine: false}).filter((d) => 
+        d.container(Plot).adjies().filter((p) => 
+          p.has(Die, {mine: true, current: 2})).length > 0).length;
 
-      $.land.all(Die, {current: 4}).forEach((d) => {
-        if (d.container(Plot).adjies().filter((p) => p.has(Die, {mine: true, current: 3})).length > 0) {
-          // console.log("+field bonus for ", d);
-          ++score;
-        }
-      });
+      const fenceBonus = $.land.all(Die, {current: 4}).filter((d) => 
+        d.container(Plot).adjies().filter((p) => 
+          p.has(Die, {mine: true, current: 3})).length > 0).length;
 
-      console.log("player new score: ", player.name, score);
-      player.score = score;
+      console.log(`${player.name} score: base ${score} plus bonuses: road: ${roadBonus} and fence: ${fenceBonus}`);
+      player.score = score + roadBonus + fenceBonus;
+      console.log("player new score: ", player.name, score + roadBonus + fenceBonus);
+
     }).message(
       `{{ player }} new score: ${player.score}`
     ),
