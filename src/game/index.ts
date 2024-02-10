@@ -335,38 +335,6 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
       }
     }),
 
-    updateScore: player => action ({
-      prompt: "What's it worth to ya?",
-    }).do(() => {
-      // console.log("doin' a score");
-      let score = 0;
-
-      // much safer to recalculate scores from scratch than to try to apply diffs, even if that is un-react-y of me. 
-      $.land.all(Die, {'mine':true}).forEach((d) => {
-        if ([2,3,4].includes(d.current)) {
-          score += d.current
-          // console.log("scoring a ", d.current);
-        } else if (6 === d.current) {
-          score += d.container(Plot).adjies().flatMap((p) => p.all(Die, {mine: true}).filter((d) => d.current != 6)).length
-          // console.log("scoring ", d.container(Plot).adjies().flatMap((p) => p.all(Die, {mine: true}).filter((d) => d.current != 6)).length, " for a 6:", d);
-        }});
-
-      const roadBonus = $.land.all(Die, {mine: false}).filter((d) => 
-        d.container(Plot).adjies().filter((p) => 
-          p.has(Die, {mine: true, current: 2})).length > 0).length;
-
-      const fenceBonus = $.land.all(Die, {current: 4}).filter((d) => 
-        d.container(Plot).adjies().filter((p) => 
-          p.has(Die, {mine: true, current: 3})).length > 0).length;
-
-      // console.log(`${player.name} score: base ${score} plus bonuses: road: ${roadBonus} and fence: ${fenceBonus}`);
-      player.score = score + roadBonus + fenceBonus;
-      // console.log("player new score: ", player.name, score + roadBonus + fenceBonus);
-    }),
-    // .message(
-    //   `{{ player }} new score: ${player.score}`
-    // ),
-
     endGame: player => action ({
       prompt: 'Game over!',
       condition: !(player.my('cup').has(Die) || player.my('reserve').has(Die)),
@@ -401,14 +369,6 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
             ]}),
           }),
           () => game.players.forEach((p) => p.calcScore()),
-          // everyPlayer({
-          //   name: 'player',
-          //   do: [
-          //     playerActions({ actions: [
-          //       'updateScore'
-          //     ]}),
-          //   ],
-          // }),
         ], 
       })
     )
