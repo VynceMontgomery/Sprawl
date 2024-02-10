@@ -33,10 +33,10 @@ export class Token extends Piece {
 
 export class Plot extends Space {
   // HACK STUB DRUNK FIXLATER
-  isAdjacentTo (target: Plot) {
-    // return (Math.abs(this.row - target.row) <= 1 && Math.abs(this.column - target.column <= 1));
-    return this.isOrthoTo(target) || this.isDiagonalTo(target);
-  }
+  // isAdjacentTo (target: Plot) {
+  //   // return (Math.abs(this.row - target.row) <= 1 && Math.abs(this.column - target.column <= 1));
+  //   return this.isOrthoTo(target) || this.isDiagonalTo(target);
+  // }
 
   isOrthoTo (target: Plot) {
     return (   Math.abs(this.row - target.row) == 1 && Math.abs(this.column - target.column) == 0
@@ -125,24 +125,27 @@ export class SprawlDie extends Die {
     const unblockedNeighbors = myNeighbs.filter((p) => !p.claimedAgainst(this));
 
     // console.log("plots, stakes, neighbs, orthos, diags, unbies:", myPlots, myStakes, myNeighbs, myOrthos, myDiags, unblockedNeighbors);
+
+    if (unblockedNeighbors.length == 0) console.log("trouble: no unblockedNeighbors");
+
     if (this.current === 1) {
       if (unblockedNeighbors.length > 0) {
         return unblockedNeighbors;
       } else {
         const avail = $.land.all(Plot).filter((p) => !p.claimedAgainst(this));
         // console.log("available: ", avail);
-        return avail || cup;
+        return (avail || cup);
       }
     } else if (this.current === 2) {
-      return unblockedNeighbors.filter((p) => myDiags.includes(p)).concat(myStakes).filter((p) => ! myOrthos.includes(p)) || cup;
+      return (unblockedNeighbors.concat(myStakes).filter((p) => ! myOrthos.includes(p)) || cup);
     } else if (this.current === 3) {
-      return unblockedNeighbors.concat(myStakes) || cup;
+      return (unblockedNeighbors.concat(myStakes) || cup);
     } else if (this.current === 4) {
-      return unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myPlots.filter((p) => !p.claimedAgainst(this))) || cup;
+      return (unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myPlots.filter((p) => !p.claimedAgainst(this))) || cup);
     } else if (this.current === 5) {
       return myNeighbs.filter((p) => !p.has(Die)).concat(myStakes).concat(cup);
     } else if (this.current === 6) {
-      return unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myStakes) || cup;
+      return (unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myStakes) || cup);
     }
 
     console.log("wtf? in validPlots", this);
@@ -161,13 +164,29 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
    */
   board.registerClasses(SprawlDie, Token, Plot);
 
+  const settingsMap = [
+    {
+      diceCount: 12,
+      boardSize: 4 + game.players.length,
+    },
+    {
+      diceCount: 8,
+      boardSize: 3 + game.players.length,
+    },
+    {
+      diceCount: 16,
+      boardSize: 5 + game.players.length,
+    },
+  ];
+
+  console.log(settingsMap, game.setting('gameLength'));
   /**
    * Create your game board's layout and all included pieces.
    */
   const Land = board.create(Space, 'land');
   Land.createGrid({
-      rows: 4 + game.players.length, 
-      columns: 4 + game.players.length, 
+      rows: settingsMap[game.setting('gameLength')].boardSize, 
+      columns: settingsMap[game.setting('gameLength')].boardSize, 
       diagonalDistance: 1.5,
       style: 'square',
     },
@@ -187,11 +206,12 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
     const roll = zone.create(Space, 'roll', {player});
     roll.onEnter(Die, d => d.roll());
     const cup = zone.create(Space, 'cup', { player });
-    cup.onEnter(Die, d => d.roll());                          //  would like to just 'obscure' the current value
-    cup.create(SprawlDie, 'd', { player , twisted: false}).current = 1;
+    cup.onEnter(Die, d => d.twisted = false);
+    // cup.onEnter(Die, d => d.roll());
+    cup.create(SprawlDie, 'd', { player , twisted: false }).current = 1;
     const reserve = zone.create(Space, 'reserve', { player });
-    reserve.onEnter(Die, d => d.roll());
-    reserve.createMany(11, SprawlDie, 'd', { player , twisted: false});
+    // reserve.onEnter(Die, d => d.roll());
+    reserve.createMany(settingsMap[game.setting('gameLength')].diceCount - 1, SprawlDie, 'd', { player , twisted: false});
   }
 
   /**
@@ -252,29 +272,34 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         }
       )
     ).do(({claim, building, rotate}) => {
-      player.my('roll').all(Die).filter((d) => d.current != building.current).forEach((d) => d.putInto(d.player.my('cup')));
+      if (claim === player.my('cup')) {
+        player.my('roll').all(Die).forEach((d) => d.putInto(claim));
+      } else {
 
-      if (claim.has(Die)) {
-        claim.all(Die).putInto(player.my('cup'));
-      }
+        player.my('roll').all(Die).filter((d) => d.current != building.current).forEach((d) => d.putInto(d.player.my('cup')));
 
-      if (rotate === 'twisted') {
-        building.twisted = true;
-      }
+        if (claim.has(Die)) {
+          claim.all(Die).putInto(player.my('cup'));
+        }
 
-      building.putInto(claim);
+        if (rotate === 'twisted') {
+          building.twisted = true;
+        }
 
-      if (building.current === 5) {
-        // console.log(building, building.container(Space), building.container(Space).adjacencies(), building.container(Plot).adjies());
-        // building.container(Plot).adjacencies().flatMap(p => p.all(Die)).forEach(d => {
-        building.container(Plot).adjies().flatMap(p => p.all(Die)).forEach(d => {
-          if (d.player === building.player) {
-            d.putInto(d.player.my('reserve'));
-          } else if (d.current !== 6) {
-            d.putInto(d.player.my('cup'));
-          }
-        });
-        building.putInto(building.player.my('reserve'));
+        building.putInto(claim);
+
+        if (building.current === 5) {
+          // console.log(building, building.container(Space), building.container(Space).adjacencies(), building.container(Plot).adjies());
+          // building.container(Plot).adjacencies().flatMap(p => p.all(Die)).forEach(d => {
+          building.container(Plot).adjies().flatMap(p => p.all(Die)).forEach(d => {
+            if (d.player === building.player) {
+              d.putInto(d.player.my('reserve'));
+            } else if (d.current !== 6) {
+              d.putInto(d.player.my('cup'));
+            }
+          });
+          building.putInto(building.player.my('reserve'));
+        }
       }
     }),
 
@@ -313,7 +338,7 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
       prompt: 'Game over!',
       condition: !(player.my('cup').has(Die) || player.my('reserve').has(Die)),
     }).do(() => { 
-      game.finish(game.players.sortedBy('score', 'desc').first());
+      game.finish(game.players.sortedBy('score', 'desc')[0]);
     }),
   });
 

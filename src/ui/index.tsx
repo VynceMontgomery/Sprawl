@@ -1,11 +1,14 @@
 import React from 'react';
-import { render, numberSetting, ProfileBadge } from '@boardzilla/core';
+import { render, choiceSetting, ProfileBadge } from '@boardzilla/core';
 import { default as setup, Space } from '../game/index.js';
 
 import './style.scss';
 import '@boardzilla/core/index.css';
 
 render(setup, {
+  settings: {
+    gameLength: choiceSetting('Length of Game', ['Normal', 'Shorter', 'Longer']),
+  },
   layout: board => {
     board.appearance({
       render: () => null
@@ -50,7 +53,7 @@ render(setup, {
     });
 
     board.all(Space, {name: 'players'}).layout("zone", {
-      rows: 3,
+      aspectRatio: 1,
       columns:1,
     });
 
