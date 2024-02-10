@@ -10,6 +10,32 @@ export class SprawlPlayer extends Player<SprawlPlayer, SprawlBoard> {
    * Any properties of your players that are specific to your game go here
    */
   score: number = 0;
+  calcScore () {
+      // console.log("doin' a score");
+      let baseScore = 0;
+
+      // much safer to recalculate scores from scratch than to try to apply diffs, even if that is un-react-y of me. 
+      $.land.all(Die, {'player':this}).forEach((d) => {
+        if ([2,3,4].includes(d.current)) {
+          baseScore += d.current
+          // console.log("scoring a ", d.current);
+        } else if (6 === d.current) {
+          baseScore += d.container(Plot).adjies().flatMap((p) => p.all(Die, {player: this}).filter((d) => d.current != 6)).length
+          // console.log("scoring ", d.container(Plot).adjies().flatMap((p) => p.all(Die, {mine: true}).filter((d) => d.current != 6)).length, " for a 6:", d);
+        }});
+
+      const roadBonus = $.land.all(Die, (d) => d.player !== this).filter((d) => 
+        d.container(Plot).adjies().filter((p) => 
+          p.has(Die, {player: this, current: 2})).length > 0).length;
+
+      const fenceBonus = $.land.all(Die, {current: 4}).filter((d) => 
+        d.container(Plot).adjies().filter((p) => 
+          p.has(Die, {player: this, current: 3})).length > 0).length;
+
+      // console.log(`${player.name} score: base ${baseScore} plus bonuses: road: ${roadBonus} and fence: ${fenceBonus}`);
+      this.score = baseScore + roadBonus + fenceBonus;
+      console.log("player new score: ", this.name, baseScore + roadBonus + fenceBonus, this.score);
+  };
 };
 
 class SprawlBoard extends Board<SprawlPlayer, SprawlBoard> {
@@ -117,8 +143,8 @@ export class SprawlDie extends Die {
   validPlots () {
     const cup = this.player.my('cup');
     const myPlots = $.land.all(Plot).filter((p) => p.first(Die)?.player === this.player);
-    const myStakes = myPlots.filter((p) => p.first(Die)?.current === 1);
-    const myNeighbs = myPlots.flatMap((p) => p.adjies());
+    const myStakes = myPlots.filter((p) => p.first(Die).current === 1);
+    const myNeighbs = myPlots.flatMap((p) => p.adjies()).filter((p) => ! myPlots.includes(p)).filter((v, i, a) => i === a.indexOf(v));
     const myOrthos = myPlots.flatMap((p) => p.orthies());
     const myDiags = myPlots.flatMap((p) => p.diagies());
 
@@ -126,7 +152,7 @@ export class SprawlDie extends Die {
 
     // console.log("plots, stakes, neighbs, orthos, diags, unbies:", myPlots, myStakes, myNeighbs, myOrthos, myDiags, unblockedNeighbors);
 
-    if (unblockedNeighbors.length == 0) console.log("trouble: no unblockedNeighbors");
+    // if (unblockedNeighbors.length == 0) console.log("trouble: no unblockedNeighbors");
 
     if (this.current === 1) {
       if (unblockedNeighbors.length > 0) {
@@ -137,15 +163,15 @@ export class SprawlDie extends Die {
         return (avail || cup);
       }
     } else if (this.current === 2) {
-      return (unblockedNeighbors.concat(myStakes).filter((p) => ! myOrthos.includes(p)) || cup);
+      return (unblockedNeighbors.concat(myStakes).filter((p) => ! myOrthos.includes(p)).filter((v, i, a) => i === a.indexOf(v)) || cup);
     } else if (this.current === 3) {
-      return (unblockedNeighbors.concat(myStakes) || cup);
+      return (unblockedNeighbors.concat(myStakes).filter((v, i, a) => i === a.indexOf(v)) || cup);
     } else if (this.current === 4) {
-      return (unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myPlots.filter((p) => !p.claimedAgainst(this))) || cup);
+      return (unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myPlots.filter((p) => !p.claimedAgainst(this))).filter((v, i, a) => i === a.indexOf(v)) || cup);
     } else if (this.current === 5) {
-      return myNeighbs.filter((p) => !p.has(Die)).concat(myStakes).concat(cup);
+      return myNeighbs.filter((p) => !p.has(Die)).concat(myStakes).concat(cup).filter((v, i, a) => i === a.indexOf(v));
     } else if (this.current === 6) {
-      return (unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myStakes) || cup);
+      return (unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myStakes).filter((v, i, a) => i === a.indexOf(v)) || cup);
     }
 
     console.log("wtf? in validPlots", this);
@@ -179,7 +205,6 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
     },
   ];
 
-  console.log(settingsMap, game.setting('gameLength'));
   /**
    * Create your game board's layout and all included pieces.
    */
@@ -243,7 +268,15 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
       condition: player.my('roll').has(Die),
     }).chooseOnBoard(
       'building',
-      player.my('roll').all(Die),
+      () => { 
+        const rolls = player.my('roll').all(Die);
+        const opts = new Set(rolls.map((d) => d.current));
+        if (opts.size > 1) {
+          return rolls;
+        } else {
+          return rolls.firstN(1, Die);
+        }
+      },
       {
         prompt: 'pick a building to place',
       },
@@ -289,9 +322,8 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         building.putInto(claim);
 
         if (building.current === 5) {
-          // console.log(building, building.container(Space), building.container(Space).adjacencies(), building.container(Plot).adjies());
-          // building.container(Plot).adjacencies().flatMap(p => p.all(Die)).forEach(d => {
-          building.container(Plot).adjies().flatMap(p => p.all(Die)).forEach(d => {
+          building.container(Plot).adjacencies().flatMap(p => p.all(Die)).forEach(d => {
+          // building.container(Plot).adjies().flatMap(p => p.all(Die)).forEach(d => {
             if (d.player === building.player) {
               d.putInto(d.player.my('reserve'));
             } else if (d.current !== 6) {
@@ -309,6 +341,7 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
       // console.log("doin' a score");
       let score = 0;
 
+      // much safer to recalculate scores from scratch than to try to apply diffs, even if that is un-react-y of me. 
       $.land.all(Die, {'mine':true}).forEach((d) => {
         if ([2,3,4].includes(d.current)) {
           score += d.current
@@ -326,13 +359,13 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         d.container(Plot).adjies().filter((p) => 
           p.has(Die, {mine: true, current: 3})).length > 0).length;
 
-      console.log(`${player.name} score: base ${score} plus bonuses: road: ${roadBonus} and fence: ${fenceBonus}`);
+      // console.log(`${player.name} score: base ${score} plus bonuses: road: ${roadBonus} and fence: ${fenceBonus}`);
       player.score = score + roadBonus + fenceBonus;
-      console.log("player new score: ", player.name, score + roadBonus + fenceBonus);
-
-    }).message(
-      `{{ player }} new score: ${player.score}`
-    ),
+      // console.log("player new score: ", player.name, score + roadBonus + fenceBonus);
+    }),
+    // .message(
+    //   `{{ player }} new score: ${player.score}`
+    // ),
 
     endGame: player => action ({
       prompt: 'Game over!',
@@ -367,14 +400,15 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
               'placeBuildings'
             ]}),
           }),
-          everyPlayer({
-            name: 'player',
-            do: [
-              playerActions({ actions: [
-                'updateScore'
-              ]}),
-            ],
-          }),
+          () => game.players.forEach((p) => p.calcScore()),
+          // everyPlayer({
+          //   name: 'player',
+          //   do: [
+          //     playerActions({ actions: [
+          //       'updateScore'
+          //     ]}),
+          //   ],
+          // }),
         ], 
       })
     )
