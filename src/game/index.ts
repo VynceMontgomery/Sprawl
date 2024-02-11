@@ -10,6 +10,7 @@ export class SprawlPlayer extends Player<SprawlPlayer, SprawlBoard> {
    * Any properties of your players that are specific to your game go here
    */
   score: number = 0;
+
   calcScore () {
       // console.log("doin' a score");
       let baseScore = 0;
@@ -34,7 +35,7 @@ export class SprawlPlayer extends Player<SprawlPlayer, SprawlBoard> {
 
       // console.log(`${player.name} score: base ${baseScore} plus bonuses: road: ${roadBonus} and fence: ${fenceBonus}`);
       this.score = baseScore + roadBonus + fenceBonus;
-      console.log("player new score: ", this.name, baseScore + roadBonus + fenceBonus, this.score);
+      // console.log("player new score: ", this.name, baseScore + roadBonus + fenceBonus, this.score);
   };
 };
 
@@ -124,6 +125,14 @@ export class Plot extends Space {
 
 export class SprawlDie extends Die {
   twisted: boolean;
+
+  noun () {
+    return ['','stake','road','fence','field','fire','wall'][this.current];
+  }
+
+  verb () {
+    return ['','plant','pave','erect','plow','set','build'][this.current];
+  }
 
   pointsTo (spot: Plot) {
     const here = this.container(Plot);
@@ -278,32 +287,26 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         }
       },
       {
-        prompt: 'pick a building to place',
+        prompt: 'pick a die to place on the map',
       },
     ).chooseOnBoard(
       'claim',
       ({building}) => building.validPlots(),
-      {
-        prompt: `Where will you stake your claim?`,
+      ({building}) => ({
+        prompt: `Where will you ${building.verb} a ${building.noun}?`,
         skipIf: 'never',
-      },
+      }),
     ).chooseFrom(
       'rotate',
       ({building}) => ['as is'].concat(([3,6].includes(building.current) ? ['twisted'] : [])),
-    ).message(
-     `{{player}} {{message}}`, ({claim, building}) => (
-        {
-          message: (
-            building.current === 5 
-              ? (claim.row && claim.column 
-                ? `chose violence at ${claim.row}, ${claim.column}`
-                : `put out fire`)
-              : (claim.row && claim.column 
-                ? `staked a claim at ${claim.row}, ${claim.column}`
-                : `had no place for a ${building.current}`)
-          )
-        }
-      )
+      {prompt: 'would you like to twist it?'},
+    ).message(`{{ message }}`, ({claim, building}) => ({
+        message: ( claim.row && claim.column)
+          ? `${player} ${building.verb()}s a ${building.noun()} at (${claim.column}, ${claim.row})`
+          : ( (building.current === 5)
+            ? `${player} puts out a fire. How nice!`
+            : `${player} has no place to ${building.verb()} a ${building.noun()}`)
+      })
     ).do(({claim, building, rotate}) => {
       if (claim === player.my('cup')) {
         player.my('roll').all(Die).forEach((d) => d.putInto(claim));

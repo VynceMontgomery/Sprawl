@@ -1,6 +1,6 @@
 {
-  "minPlayers": 1,
-  "maxPlayers": 4,
+  "minPlayers": 2,
+  "maxPlayers": 6,
   "ui": {
     "root": ".",
     "build": {
@@ -25,5 +25,5 @@
     "out": "build/game/game-interface.js"
   },
   "name": "sprawl",
-  "friendlyName": "sprawl"
+  "friendlyName": "Sprawl! A land grab"
 }
