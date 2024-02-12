@@ -12,17 +12,14 @@ export class SprawlPlayer extends Player<SprawlPlayer, SprawlBoard> {
   score: number = 0;
 
   calcScore () {
-      // console.log("doin' a score");
       let baseScore = 0;
 
       // much safer to recalculate scores from scratch than to try to apply diffs, even if that is un-react-y of me. 
       $.land.all(Die, {'player':this}).forEach((d) => {
         if ([2,3,4].includes(d.current)) {
           baseScore += d.current
-          // console.log("scoring a ", d.current);
         } else if (6 === d.current) {
           baseScore += d.container(Plot).adjies().flatMap((p) => p.all(Die, {player: this}).filter((d) => d.current != 6)).length
-          // console.log("scoring ", d.container(Plot).adjies().flatMap((p) => p.all(Die, {mine: true}).filter((d) => d.current != 6)).length, " for a 6:", d);
         }});
 
       const roadBonus = $.land.all(Die, (d) => d.player !== this).filter((d) => 
@@ -58,6 +55,11 @@ export class Token extends Piece {
   color: 'red' | 'blue';
 }
 
+export interface Claim {
+  player: Player,
+  current: 1|2|3|4|5|6,
+}
+
 export class Plot extends Space {
   // HACK STUB DRUNK FIXLATER
   // isAdjacentTo (target: Plot) {
@@ -89,38 +91,56 @@ export class Plot extends Space {
     return this.others(Plot).filter((p) => this.isDiagonalTo(p));
   }
 
-  claimedAgainst (proposal: Die) {
+
+  // Memoized claims. this cache stores all adjacent dice that have any claim on this plot.
+  // Now we don't recalculate every spot on the board every turn, only the ones that might have changed.
+
+  claimCache: undefined | Claim[];
+
+  // could replace some of this logic with pointsTo()?
+  // this might be more efficient, though, and 2s don't point (currently).
+
+  claimsAgainst (force?: boolean) {
+    if (!force && this.claimCache) return this.claimCache;
+
+    const claims: Claim[] = [];
+
+    claims.push(... this.adjacencies().filter((p) => {
+      if (p.has(Die)) {
+        const d = p.first(Die);
+        if (p.row === this.row || p.column === this.column) { // ortho
+          if (d.current === 2
+              || (d.current === 6 && ((p.row === this.row) === d.twisted))) {
+            return true;
+          }
+        } else if (d.current === 3
+          && (d.twisted ? (this.row - p.row !== this.column - p.column) : (this.row - p.row === this.column - p.column))) {
+          return true;
+        }
+      }
+    }).map((p) => p.first(Die)));
+
+    this.claimCache = claims;
+
+    return claims;
+  }
+
+  // Still have to compare teh claimsagainst the individual die being placed, but that's hopefully not the slow part.
+  availableFor (proposal: SprawlDie) {
     const asker = proposal.player;
+
     if (this.has(Die)) {
       const d = this.first(Die);
       if (d.player === asker && d.current !== proposal.current && (d.current === 1 || proposal.current === 4)) { 
-        return false;
-      } else {
         return true;
+      } else {
+        return false;
       }
     } else {
-      // const neighbors = this.adjacencies().flatMap((p) => p.all(Die));
-      const neighbors = this.adjies().flatMap((p) => p.all(Die));
-      const claimants = neighbors.filter((d) => {
-        if (d.player === asker) {
-          if (d.current === 2 && this.isOrthoTo(d.container(Plot))) {
-            // console.log(this.row, this.column, "blocked by a 2");
-            return true;
-          }
-        } else {
-          if (proposal.current != d.current && [3, 6].includes(d.current) && d.pointsTo(this)) {
-            // console.log(this.row, this.column, "blocked by a ...", d.current);
-            return true;
-          }
-        }
-        return false;
-        // return (d.player === asker && this.isOrthoTo(d.container(Plot)));
-      });
-
-      return (claimants.length > 0);
+      return ! this.claimsAgainst().some((c) => ((c.current === 2) ? c.player === asker
+                                               : (c.current !== proposal.current && c.player !== asker)));
     }
   }
-
 }
 
 export class SprawlDie extends Die {
@@ -149,6 +169,8 @@ export class SprawlDie extends Die {
     return false;
   }
 
+  // technically returns valid spaces, which might include the cup, which is not a plot.
+
   validPlots () {
     const cup = this.player.my('cup');
     const myPlots = $.land.all(Plot).filter((p) => p.first(Die)?.player === this.player);
@@ -157,34 +179,38 @@ export class SprawlDie extends Die {
     const myOrthos = myPlots.flatMap((p) => p.orthies());
     const myDiags = myPlots.flatMap((p) => p.diagies());
 
-    const unblockedNeighbors = myNeighbs.filter((p) => !p.claimedAgainst(this));
+    const unblockedNeighbors = myNeighbs.filter((p) => p.availableFor(this));
 
     // console.log("plots, stakes, neighbs, orthos, diags, unbies:", myPlots, myStakes, myNeighbs, myOrthos, myDiags, unblockedNeighbors);
 
     // if (unblockedNeighbors.length == 0) console.log("trouble: no unblockedNeighbors");
 
+    let valids = [];
+
     if (this.current === 1) {
       if (unblockedNeighbors.length > 0) {
-        return unblockedNeighbors;
+        valids = unblockedNeighbors;
       } else {
-        const avail = $.land.all(Plot).filter((p) => !p.claimedAgainst(this));
+        const avail = $.land.all(Plot).filter((p) => p.availableFor(this));
         // console.log("available: ", avail);
-        return (avail || cup);
+        valids = avail;
       }
     } else if (this.current === 2) {
-      return (unblockedNeighbors.concat(myStakes).filter((p) => ! myOrthos.includes(p)).filter((v, i, a) => i === a.indexOf(v)) || cup);
+      valids = unblockedNeighbors.concat(myStakes).filter((p) => ! myOrthos.includes(p));
     } else if (this.current === 3) {
-      return (unblockedNeighbors.concat(myStakes).filter((v, i, a) => i === a.indexOf(v)) || cup);
+      valids = unblockedNeighbors.concat(myStakes);
     } else if (this.current === 4) {
-      return (unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myPlots.filter((p) => !p.claimedAgainst(this))).filter((v, i, a) => i === a.indexOf(v)) || cup);
+      valids = unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myPlots.filter((p) => p.availableFor(this)));
     } else if (this.current === 5) {
-      return myNeighbs.filter((p) => !p.has(Die)).concat(myStakes).concat(cup).filter((v, i, a) => i === a.indexOf(v));
+      valids = myNeighbs.filter((p) => !p.has(Die)).concat(myStakes).concat(cup);
     } else if (this.current === 6) {
-      return (unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myStakes).filter((v, i, a) => i === a.indexOf(v)) || cup);
+      valids = unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myStakes);
+    } else {
+      console.log("pretty much a panic");
     }
 
-    console.log("wtf? in validPlots", this);
-    return cup;
+    valids = valids.filter((v, i, a) => i === a.indexOf(v));
+    return (valids.length ? valids : cup);
   }
 }
 
@@ -228,9 +254,13 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
     'plot',
     );
   Land.all('plot').forEach(plot => plot.onEnter(Die, d => {
+    plot.adjacencies().forEach((p) => p.claimCache = undefined);
     if (d.current === 1) { 
       d.player.my('reserve').first(Die)?.putInto(d.player.my('cup'));
     }
+  }));
+  Land.all('plot').forEach(plot => plot.onExit(Die, d => {
+    plot.adjacencies().forEach((p) => p.claimCache = undefined);
   }));
 
   const pp = board.create(Space, 'players');
@@ -292,10 +322,10 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
     ).chooseOnBoard(
       'claim',
       ({building}) => building.validPlots(),
-      ({building}) => ({
-        prompt: `Where will you ${building.verb} a ${building.noun}?`,
+      {
+        prompt: (({building}) => `Where will you ${building.verb()} a ${building.noun()}?`),
         skipIf: 'never',
-      }),
+      },
     ).chooseFrom(
       'rotate',
       ({building}) => ['as is'].concat(([3,6].includes(building.current) ? ['twisted'] : [])),
@@ -335,6 +365,17 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
           });
           building.putInto(building.player.my('reserve'));
         }
+
+        if (player.my('reserve').all(Die).length < 2 && board.phase < 2) {
+          game.announce('EndGame');
+          board.phase = 2;
+        }
+
+        if (player.my('zone').all(Die).length === 0 && board.phase < 3) {
+          game.announce("LastTurn");
+          board.phase = 3;
+        }
+
       }
     }),
 

@@ -104,5 +104,18 @@ render(setup, {
     board.all(SprawlDie).appearance({
       className: 'Die'
     });
+  },
+
+  announcements: {
+    EndGame: board => (
+        <div>
+        <p>Entering the end game. At least one player is now rolling all their dice.</p>
+        </div>
+      ),
+    LastTurn: board => (
+        <div>
+        <p>{board.first(Space, (r) => (r.name === 'reserve' && !r.has(Die))).player.name} has placed their last die. This may be your last turn.</p>
+        </div>
+      )
   }
 });
