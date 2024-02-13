@@ -65,8 +65,17 @@
   background-color: var(--player-color);
   border-radius: .5em;
   border-color: var(--player-color);
-  box-shadow: 1px 1px .3em inset #ffffff69, 
-              -1px -1px .3em inset #00000069;
+  box-shadow: 0.1em 0.1em .3em inset #ffffffa0, 
+              -.1em -.1em .4em inset #000000ba;
+
+}
+
+.Die[data-twisted=true] .die-face {
+  background-color: var(--player-color);
+  border-radius: .5em;
+  border-color: var(--player-color);
+  box-shadow: 0.1em -.1em .3em inset #ffffffa0, 
+              -.1em 0.1em .4em inset #000000ba;
 
 }
 
@@ -122,17 +131,37 @@
   background-color: none;
 }
 
-[data-name=plot][data-gridparity=odd]
-// [data-name=plot][data-gridparity=odd] > .bz-default 
-{
+[data-name=plot].selectable {
+  box-shadow: 01em 01em 1em inset #654321, 
+              -1em -1em 1em inset #543210;
+  visibility: visible;
+}
+
+[data-name=plot].selectable:hover {
+  box-shadow: 0.5em 0.5em 1em inset #ccab00, 
+              -.5em -.5em 1em inset #ccab00;
+  visibility: visible;
+}
+
+[data-name=cup].selectable {
+  box-shadow: 0.5em 0.5em 1em inset #ccab00, 
+              -.5em -.5em 1em inset #ccab00;
+  visibility: visible;
+}
+
+[data-name=cup].selectable:hover {
+  box-shadow: 0.5em 0.5em 1em inset var(--player-color), 
+              -.5em -.5em 1em inset var(--player-color);
+  visibility: visible;
+}
+
+[data-name=plot][data-gridparity=odd] {
   background-color: #65432176;
   visibility: visible;
 }
 
-[data-name=plot][data-gridparity=even]
-// [data-name=plot][data-gridparity=even] > .bz-default 
-{
-  background-color: #fedcba45;
+[data-name=plot][data-gridparity=even] {
+  background-color: #87654321;
   visibility: visible;
 }
 

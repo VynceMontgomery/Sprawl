@@ -16,17 +16,17 @@ render(setup, {
 
     board.layout(Space, {
       gap: 1,
-      margin: 1
+      margin: 1,
     });
 
     board.all(Space).layout(Die, {
-      gap: 0.5, 
+      gap: 0.5,
       margin: 1,
     });
 
     board.all(Space, {name: 'plot'}).layout(Die, {
-      gap: 1, 
-      margin: 1,
+      gap: 1,
+      margin: 1.5,
     });
 
 
@@ -68,38 +68,43 @@ render(setup, {
     board.all(Space, {name: 'zone'}).layout("roll", {
       aspectRatio: 1,
       area: {
-        left: 40,
-        top: 15,
-        height: 60,
-        width: 60,
+        left: 35,
+        top: 20,
+        height: 45,
+        width: 65,
       },
     });
 
     board.all(Space, {name: 'zone'}).layout("cup", {
       aspectRatio: 5/7,
       area: {
-        left: 10,
+        left: 5,
         top: 60,
         height: 35,
         width: 25,
       },
     });
 
+    board.all(Space, {name: 'cup'}).layout(Die, {
+      gap: 0.5,
+      margin: 0.5,
+      haphazardly: 0.1,
+      alignment: "bottom left",
+    });
+
     board.all(Space, {name: 'zone'}).layout("reserve", {
-      aspectRatio: 3/2,
+      // aspectRatio: 3/2,
       area: {
-        left: 40,
+        left: 35,
         top: 70,
         height: 25,
-        width: 55,
+        width: 60,
       },
     });
 
     board.all(Space, {name: 'zone'}).appearance({
-      // aspectRatio: 3/2,
-
       render: zone => (
-        <div class="playerZone">
+        <div className="playerZone">
           <ProfileBadge player={zone.player!}/>
           <div className="score">{zone.player!.score}</div>
         </div>

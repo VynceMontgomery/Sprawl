@@ -213,7 +213,7 @@ export class SprawlDie extends Die {
     if (valids.length < 2) console.log(`few options for ${this.current}: `, valids);
     if (valids.length < 1) { 
       console.log(`should return instead`, cup);
-      return cup;
+      return [cup];
     }
     return (valids);
   }
@@ -375,9 +375,20 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
           building.putInto(building.player.my('reserve'));
         }
 
-        if (player.my('reserve').all(Die).length < 2 && board.phase < 2) {
-          game.announce('EndGame');
-          board.phase = 2;
+        // Some trouble here with game.announce failing?
+
+        if (player.my('reserve').all(Die).length < 2) {
+          console.log(`short reserve (${player.my('reserve').all(Die).length}) in phase ${board.phase}`);
+          if (board.phase < 2) {
+            const well = game.announce('EndGame');
+            if (well) {
+              console.log(`well ${well}`);
+            } else { 
+              console.log(`well... ${well}`);
+              console.log(game.announce('EndGame'));
+            }
+            board.phase = 2;
+          }
         }
 
         if (player.my('zone').all(Die).length === 0 && board.phase < 3) {
