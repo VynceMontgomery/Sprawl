@@ -210,7 +210,12 @@ export class SprawlDie extends Die {
     }
 
     valids = valids.filter((v, i, a) => i === a.indexOf(v));
-    return (valids.length ? valids : cup);
+    if (valids.length < 2) console.log(`few options for ${this.current}: `, valids);
+    if (valids.length < 1) { 
+      console.log(`should return instead`, cup);
+      return cup;
+    }
+    return (valids);
   }
 }
 
@@ -321,7 +326,11 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
       },
     ).chooseOnBoard(
       'claim',
-      ({building}) => building.validPlots(),
+      ({building}) => { 
+        const vps = building.validPlots(); 
+        if (vps.length < 2) console.log("got: ", vps);
+        return vps;
+      },
       {
         prompt: (({building}) => `Where will you ${building.verb()} a ${building.noun()}?`),
         skipIf: 'never',
