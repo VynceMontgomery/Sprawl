@@ -40,7 +40,7 @@ class SprawlBoard extends Board<SprawlPlayer, SprawlBoard> {
   /**
    * Any overall properties of your game go here
    */
-  phase: number = 1;
+  phase: number = 0;
 }
 
 const { Space, Piece, Die } = createBoardClasses<SprawlPlayer, SprawlBoard>();
@@ -335,6 +335,16 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         prompt: (({building}) => `Where will you ${building.verb()} a ${building.noun()}?`),
         skipIf: 'never',
       },
+    // ).chooseGroup({
+    //   choices: {
+    //     rotate: ['board', ({building}) => {return [building]}, {skipIf: 'never'}],
+    //     // done: ['select', ['Done'], {prompt: 'Click done when die faces correct direction', skipIf: 'never'}],
+    //   },
+    //   // options: {
+    //   //   validate: (v) => v.done == 'Done'
+    //   // },
+    // }
+
     ).chooseFrom(
       'rotate',
       ({building}) => ['as is'].concat(([3,6].includes(building.current) ? ['twisted'] : [])),
@@ -418,6 +428,8 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         actions: ['initialStake']   // may not be necessary, now that the edge case of havingnothing on the board is properly handled
       }),
     }),
+
+    () => board.phase = 1,
 
     loop(
       eachPlayer({

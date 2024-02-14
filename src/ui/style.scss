@@ -61,6 +61,66 @@
 }
 
 
+
+h1 {
+  font-family: Rye, fantasy;
+  font-size: 24pt;
+}
+
+.banner {
+  align-content: center;
+}
+
+.banner h1 {
+  color: #433221;
+  background-color: #76543276;
+  font-family: Rye, fantasy;
+  font-size: 30pt;
+  border: double thick #433221;
+  border-radius: .3em;
+  margin: .2em;
+  padding: .1em;
+  text-align: center;
+  width: 90%;
+  box-shadow: 0.2em 0.2em 0.5em inset #322110, 
+              -.2em -.2em 0.5em inset #221100;
+  text-shadow: 0.02em 0.02em 0.01em #ccab00,
+               -.03em -.03em 0.01em #221100;
+}
+
+.banner .tagline {
+  color: #322110;
+  background-color: #76543276;
+  font-family: Smythe, serif;
+  font-size: 18pt;
+  border-radius: .3em;
+  border: solid #433221;
+  margin: .5em;
+  text-align: center;
+  width: 88%;
+  box-shadow: 0.2em 0.2em 0.4em inset #433221, 
+              -.2em -.2em 0.4em inset #322110;
+  text-shadow: -.02em -.02em 0.01em #221100;
+}
+
+.player-controls button {
+  font-family: Smythe, serif;
+  color: #543210;
+  background-color: #cba850;
+}
+
+.score {
+  font-family: Smythe, serif;
+  color: var(--player-color);
+  margin-left: .25em;
+  text-shadow: .02em .02em .2em #eee;
+}
+
+.prompt {
+  font-family: Ribeye Marrow, Rieye, fantasy;
+  color: #543210;
+}
+
 .Die .die-face {
   background-color: var(--player-color);
   border-radius: .5em;
@@ -137,6 +197,11 @@
   visibility: visible;
 }
 
+[data-phase="0"].SprawlBoard [data-name=plot].selectable {
+    box-shadow: none;
+}
+
+[data-phase="0"].SprawlBoard [data-name=plot].selectable:hover,
 [data-name=plot].selectable:hover {
   box-shadow: 0.5em 0.5em 1em inset #ccab00, 
               -.5em -.5em 1em inset #ccab00;
@@ -164,4 +229,3 @@
   background-color: #87654321;
   visibility: visible;
 }
-

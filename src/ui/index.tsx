@@ -10,8 +10,14 @@ render(setup, {
     gameLength: choiceSetting('Length of Game', ['Normal', 'Shorter', 'Longer']),
   },
   layout: board => {
-    board.appearance({
-      render: () => null
+    board.appearance({ render: () => null});
+
+    board.first('land').appearance({
+      render: () => 
+        <div className="banner">
+          <h1>Sprawl</h1>
+          <h2 className="tagline">A Land Grab Game</h2>
+        </div>
     });
 
     board.layout(Space, {
@@ -20,6 +26,7 @@ render(setup, {
     });
 
     board.all(Space).layout(Die, {
+      aspectRatio: 1,
       gap: 0.5,
       margin: 1,
     });
@@ -29,7 +36,6 @@ render(setup, {
       margin: 1.5,
     });
 
-
     // board.all(Space, {name: 'land'}).appearance({
     //   aspectRatio: 1,
     //   left: 25,
@@ -38,22 +44,34 @@ render(setup, {
 
     board.layout('land', {
       aspectRatio: 1,
+      alignment: "top right",
       area: {
-        left: 0,
         top: 0,
+        height: 100,
+        left: 0,
         width: 65,
-        height: 65,
       },
       // showBoundingBox: true,
+    });
+
+    board.all('land').layout('plot', {
+      aspectRatio: 1,
+      area: {
+        top: 30,
+        height: 100,
+        left: 0,
+        width: 100,
+      },
+      showBoundingBox: true,
     });
 
     board.layout('players', {
       aspectRatio: 1/3,
       area: {
         top: 0,
+        height: 100,
         left: 65,
         width: 35,
-        height: 100,
       },
     });
 
@@ -86,6 +104,7 @@ render(setup, {
     });
 
     board.all(Space, {name: 'cup'}).layout(Die, {
+      aspectRatio: 1,
       gap: 0.5,
       margin: 0.5,
       haphazardly: 0.1,
