@@ -10,28 +10,31 @@ export class SprawlPlayer extends Player<SprawlPlayer, SprawlBoard> {
    * Any properties of your players that are specific to your game go here
    */
   score: number = 0;
+  scoreDetail: {};
 
   calcScore () {
       let baseScore = 0;
+      let scoreObj = {road: 0, fence: 0, field: 0, wall: 0};
 
       // much safer to recalculate scores from scratch than to try to apply diffs, even if that is un-react-y of me. 
       $.land.all(Die, {'player':this}).forEach((d) => {
         if ([2,3,4].includes(d.current)) {
-          baseScore += d.current
+          scoreObj[d.noun()] += d.current;
         } else if (6 === d.current) {
-          baseScore += d.container(Plot).adjies().flatMap((p) => p.all(Die, {player: this}).filter((d) => d.current != 6)).length
+          scoreObj[d.noun()] += d.container(Plot).adjies().flatMap((p) => p.all(Die, {player: this}).filter((n) => n.current != 6)).length
         }});
 
-      const roadBonus = $.land.all(Die, (d) => d.player !== this).filter((d) => 
+      scoreObj['roadBonus'] = $.land.all(Die, (d) => d.player !== this).filter((d) => 
         d.container(Plot).adjies().filter((p) => 
           p.has(Die, {player: this, current: 2})).length > 0).length;
 
-      const fenceBonus = $.land.all(Die, {current: 4}).filter((d) => 
+      scoreObj['fenceBonus'] = $.land.all(Die, {current: 4}).filter((d) => 
         d.container(Plot).adjies().filter((p) => 
           p.has(Die, {player: this, current: 3})).length > 0).length;
 
       // console.log(`${player.name} score: base ${baseScore} plus bonuses: road: ${roadBonus} and fence: ${fenceBonus}`);
-      this.score = baseScore + roadBonus + fenceBonus;
+      this.scoreDetail = scoreObj;
+      this.score = [0, 'road', 'fence', 'field', 'wall', 'roadBonus', 'fenceBonus'].reduce((a, s) => a + scoreObj[s] || 0);
       // console.log("player new score: ", this.name, baseScore + roadBonus + fenceBonus, this.score);
   };
 };
@@ -462,7 +465,7 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
     eachPlayer({
       name: 'player',
       do: playerActions({
-        actions: ['initialStake']   // may not be necessary, now that the edge case of havingnothing on the board is properly handled
+        actions: ['initialStake']   // may not be necessary, now that the edge case of having nothing on the board is properly handled
       }),
     }),
 

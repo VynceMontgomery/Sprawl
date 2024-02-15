@@ -18,6 +18,18 @@ render(setup, {
           <h1>Sprawl</h1>
           <h2 className="tagline">A Land Grab Game</h2>
         </div>
+      // (a) this doesn't look right, as is and (b) this keeps plot info from working (layering order?)
+      // so, TODO: fix that. 
+      // possibly replace with some sortof credits / full page scrollable rulebook? 
+      // , info: () => 
+      // <div>
+      //   <p>Sprawl is a game about claiming land and putting it to use.</p>
+      //   <p>On each turn, you will add a die to your cup, then roll the dice in your cup. 
+      //     You'll choose one result and place all copies of it on the board. 
+      //     Each result represents a different kind of building or event, 
+      //     which each have their own placement and scoring rules.</p>
+      //   <p> Learn more from the rulebook... once I post one.</p>
+      // </div>
     });
 
     board.layout(Space, {
@@ -130,10 +142,36 @@ render(setup, {
       )
     });
 
+    board.all('cup').appearance({
+      info: (cup) => {
+        const count = cup.all(Die).length;
+        const rescount = cup.player.my('reserve').all(Die).length;
+        return (
+          <div>
+            This is {cup.player.name}'s dice cup. 
+            It has { count } { count === 1 ? 'die' :'dice' } in it.
+            { count === 0 && rescount === 0 ? `All their dice are placed. If that's still true when their turn starts, the game ends.` : ''}
+          </div>
+        )},
+    })
+
+    board.all('reserve').appearance({
+      info: (reserve) => {
+        const count = reserve.all(Die).length;
+        const cupcount = reserve.player.my('cup').all(Die).length;
+        return (
+          <div>
+            This is {reserve.player.name}'s reserve. 
+            It has { count } { count === 1 ? 'die' :'dice' } in it.
+            { count < 2 ? `The game may be almost over.` :''}
+            { count === 0 && cupcount === 0 ? `All their dice are placed. If that's still true when their turn starts, the game ends.` : ''}
+          </div>
+        )},
+    })
+
     board.all(Plot).appearance({
       render: plot => {
         if (plot.blocker) { return (
-          // <>
           <div className="blocker">
             {
             (plot.blocker === 'orthogonal') 
@@ -143,12 +181,57 @@ render(setup, {
             : `Blocked by a ${ plot.blocker?.current }`)
             }
           </div>
-          //   {/*<div>X</div>*/}
-          //   </>
-          // )} else { return (
-          //   <div>{`(${plot.column}, ${plot.row})`}</div>
         )}
-      }
+      },
+      info: plot => {
+        if (plot.row === 6 && plot.column === 9) {
+        //   console.log(plot.claimCache);
+          console.log("plain: ", plot.claimsAgainst());
+          console.log("forced: ", plot.claimsAgainst(true));
+        //   console.log(plot.claimCache);
+        }
+
+        if (plot.has(Die)) {
+          const d = plot.first(Die);
+          return (
+            <>
+            <div>
+              This plot is occupied by { d.player.name }'s { d.noun() }.
+              { [3, 6].includes(d.current) ?
+                (d.twisted 
+                  ? ' Because it is twisted, it runs ' 
+                  + ( d.current === 6 ? 'East-West ' : 'Northeast-Southwest ')
+                  : " It runs "
+                  + ( d.current === 6 ? 'North-South ' : 'Northwest-Southeast ') ) 
+                + ' and blocks the next plot in each of those directions.'
+              : ''}
+            </div>
+            <div>
+              {d.noun()}s score { // <-- ucfirst that, maybe also big bold it? 
+                d.current === 1 
+                ? ` nothing, but they hold the space for you to build on later.`
+                : d.current === 6
+                ? ` one point for each adjacent, non-${d.noun()} die belonging to the same player.`
+                : ` their face value (${ d.current }).`
+              }
+              { (d.current === 2
+                ? ` In addition, there is a bonus of one point for each opponent die that touches any number of your ${ d.noun() }s. `
+                : d.current === 3 
+                ? ` In addition, there is a bonus of one point for each field - beloning to any player - that touches any number of your ${ d.noun() }s. `
+                : '')
+              }
+            </div>
+            </>
+          );
+        } else { return (
+          <div>
+            This plot is empty.
+            { plot.claimsAgainst()?.length ? ` Placement here may be affeced by these nearby claims: ` 
+              + plot.claimsAgainst()?.map((c) => c.player.name + "'s " + c.noun()).join(', ')
+              :''}
+          </div>
+        )}
+      },
     });
 
     board.all(Space, (p) => p.name === 'plot' &&  ((p.row + p.column) % 2)).forEach((p) => p.gridparity = 'odd');

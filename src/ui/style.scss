@@ -63,8 +63,13 @@
 
 
 h1 {
-  font-family: Rye, fantasy;
+  font-family: Smythe, serif;
   font-size: 24pt;
+}
+
+h2 {
+  font-family: Ribeye Marrow, fantasy;
+  font-size: 18pt;
 }
 
 .banner {
@@ -76,14 +81,14 @@ h1 {
   background-color: #76543276;
   font-family: Rye, fantasy;
   font-size: 30pt;
-  border: double thick #433221;
+  border: double thick #322110;
   border-radius: .3em;
   margin: .2em;
-  padding: .1em;
+  padding: .4em;
   text-align: center;
   width: 90%;
-  box-shadow: 0.2em 0.2em 0.5em inset #322110, 
-              -.2em -.2em 0.5em inset #221100;
+  box-shadow: 0.2em 0.2em 0.5em inset #543210,
+              -.2em -.2em 0.5em inset #765432;
   text-shadow: 0.02em 0.02em 0.01em #ccab00,
                -.03em -.03em 0.01em #221100;
 }
@@ -95,11 +100,12 @@ h1 {
   font-size: 18pt;
   border-radius: .3em;
   border: solid #433221;
-  margin: .5em;
+  margin: 0.25em;
+  paddng: 0.75em;
   text-align: center;
   width: 88%;
-  box-shadow: 0.2em 0.2em 0.4em inset #433221, 
-              -.2em -.2em 0.4em inset #322110;
+  box-shadow: 0.2em 0.2em 0.4em inset #765432, 
+              -.2em -.2em 0.4em inset #543210;
   text-shadow: -.02em -.02em 0.01em #221100;
 }
 
