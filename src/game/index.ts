@@ -125,7 +125,16 @@ export class Plot extends Space {
     return claims;
   }
 
-  // Still have to compare teh claimsagainst the individual die being placed, but that's hopefully not the slow part.
+  blockingClaim (proposal: SprawlDie) {
+    // if (! this.claimsAgainst().find((c) => ((c.current === 2) ? c.player === proposal.player
+    //                                            : (c.current !== proposal.current && c.player !== proposal.player)))) {
+    //   console.log(`no blocker for ${this.column}, ${this.row} against ${ proposal.current } in:`, this.claimCache );
+    // }
+    return this.claimsAgainst().find((c) => ((c.current === 2) ? c.player === proposal.player
+                                               : (c.current !== proposal.current && c.player !== proposal.player)));
+  }
+
+  // Still have to compare the claimsAgainst the individual die being placed, but that's hopefully not the slow part.
   availableFor (proposal: SprawlDie) {
     const asker = proposal.player;
 
@@ -173,13 +182,24 @@ export class SprawlDie extends Die {
 
   validPlots () {
     const cup = this.player.my('cup');
-    const myPlots = $.land.all(Plot).filter((p) => p.first(Die)?.player === this.player);
+    const myPlots = $.land.all(Plot).filter((p) => {delete p.blocker; return p.first(Die)?.player === this.player});
     const myStakes = myPlots.filter((p) => p.first(Die).current === 1);
     const myNeighbs = myPlots.flatMap((p) => p.adjies()).filter((p) => ! myPlots.includes(p)).filter((v, i, a) => i === a.indexOf(v));
     const myOrthos = myPlots.flatMap((p) => p.orthies());
     const myDiags = myPlots.flatMap((p) => p.diagies());
 
     const unblockedNeighbors = myNeighbs.filter((p) => p.availableFor(this));
+
+    if (unblockedNeighbors.length < myNeighbs.length){
+      // console.log(`found ${ myNeighbs.length } Ns and ${ unblockedNeighbors.length } un, for ${ myNeighbs.length - unblockedNeighbors.length } blocked Ns`);
+      const claims = myNeighbs.filter((p) => !p.availableFor(this)).forEach((p) => {
+        if (!p.has(Die)) {
+          // console.log(`Blocking ${p.column}, ${p.row} with ${p.blockingClaim(this)?.current}` );
+          p.blocker = p.blockingClaim(this);
+        }
+      }
+      );
+    }
 
     // console.log("plots, stakes, neighbs, orthos, diags, unbies:", myPlots, myStakes, myNeighbs, myOrthos, myDiags, unblockedNeighbors);
 
@@ -192,27 +212,44 @@ export class SprawlDie extends Die {
         valids = unblockedNeighbors;
       } else {
         const avail = $.land.all(Plot).filter((p) => p.availableFor(this));
+        $.land.all(Plot).filter((p) => !p.availableFor(this) && !(p.has(Die))).forEach((p) => p.blocker = p.blockingClaim(this));
         // console.log("available: ", avail);
         valids = avail;
       }
     } else if (this.current === 2) {
       valids = unblockedNeighbors.concat(myStakes).filter((p) => ! myOrthos.includes(p));
+      unblockedNeighbors.concat(myStakes).forEach((p) => {
+        // console.log(`testing ${p.column}, ${p.row} and ${myOrthos.includes(p)}`);
+        myOrthos.includes(p) ? p.blocker = 'orthogonal' : delete p.blocker;
+        // console.log(`so ${ p.blocker }`);
+      });
     } else if (this.current === 3) {
       valids = unblockedNeighbors.concat(myStakes);
     } else if (this.current === 4) {
       valids = unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myPlots.filter((p) => p.availableFor(this)));
+      unblockedNeighbors.forEach((p) => {
+        // console.log(`testing ${p.column}, ${p.row} and ${myOrthos.includes(p)}`);
+        myOrthos.includes(p) ? delete p.blocker : p.blocker = 'not orthogonal';
+        // console.log(`so ${ p.blocker }`);
+      });
     } else if (this.current === 5) {
       valids = myNeighbs.filter((p) => !p.has(Die)).concat(myStakes).concat(cup);
     } else if (this.current === 6) {
       valids = unblockedNeighbors.filter((p) => myOrthos.includes(p)).concat(myStakes);
+      unblockedNeighbors.forEach((p) => {
+        // console.log(`testing ${p.column}, ${p.row} and ${myOrthos.includes(p)}`);
+        myOrthos.includes(p) ? delete p.blocker : p.blocker = 'not orthogonal';
+        // console.log(`so ${ p.blocker }`);
+      });
     } else {
       console.log("pretty much a panic");
     }
 
+    // FIXME can be removed in some future core (current 0.0.91);
     valids = valids.filter((v, i, a) => i === a.indexOf(v));
-    if (valids.length < 2) console.log(`few options for ${this.current}: `, valids);
+    // if (valids.length < 2) console.log(`few options for ${this.current}: `, valids);
     if (valids.length < 1) { 
-      console.log(`should return instead`, cup);
+      // console.log(`should return instead`, cup);
       return [cup];
     }
     return (valids);
@@ -259,13 +296,13 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
     'plot',
     );
   Land.all('plot').forEach(plot => plot.onEnter(Die, d => {
-    plot.adjacencies().forEach((p) => p.claimCache = undefined);
+    plot.adjacencies().forEach((p) => delete p.claimCache);
     if (d.current === 1) { 
       d.player.my('reserve').first(Die)?.putInto(d.player.my('cup'));
     }
   }));
   Land.all('plot').forEach(plot => plot.onExit(Die, d => {
-    plot.adjacencies().forEach((p) => p.claimCache = undefined);
+    plot.adjacencies().forEach((p) => delete p.claimCache);
   }));
 
   const pp = board.create(Space, 'players');
@@ -388,18 +425,18 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
         // Some trouble here with game.announce failing?
 
         if (player.my('reserve').all(Die).length < 2) {
-          console.log(`short reserve (${player.my('reserve').all(Die).length}) in phase ${board.phase}`);
+          // console.log(`short reserve (${player.my('reserve').all(Die).length}) in phase ${board.phase}`);
           if (board.phase < 2) {
-            const well = game.announce('EndGame');
-            if (well) {
-              console.log(`well ${well}`);
-            } else { 
-              console.log(`well... ${well}`);
-              console.log(game.announce('EndGame'));
+          //   const well = game.announce('EndGame');
+          //   if (well) {
+          //     console.log(`well ${well}`);
+          //   } else { 
+          //     console.log(`well... ${well}`);
+          //     console.log(game.announce('EndGame'));
+          //   }
+              board.phase = 2;
             }
-            board.phase = 2;
           }
-        }
 
         if (player.my('zone').all(Die).length === 0 && board.phase < 3) {
           game.announce("LastTurn");

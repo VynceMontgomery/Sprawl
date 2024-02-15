@@ -143,7 +143,7 @@ h1 {
   transform: rotate(90deg);
 }
 
-[data-name=land] .bz-default {
+#land .bz-default {
   visibility: hidden;
 }
 
@@ -192,8 +192,8 @@ h1 {
 }
 
 [data-name=plot].selectable {
-  box-shadow: 01em 01em 1em inset #654321, 
-              -1em -1em 1em inset #543210;
+  box-shadow: 01em 01em 1em inset #876543, 
+              -1em -1em 1em inset #765432;
   visibility: visible;
 }
 
@@ -205,6 +205,18 @@ h1 {
 [data-name=plot].selectable:hover {
   box-shadow: 0.5em 0.5em 1em inset #ccab00, 
               -.5em -.5em 1em inset #ccab00;
+  visibility: visible;
+}
+
+[data-name="plot"] .blocker {
+  font-family: Smythe, serif;
+  font-size: 175%;
+  visibility: hidden;
+}
+
+[data-name="plot"]:not(.selectable):hover .blocker {
+  font-family: Smythe, serif;
+  font-size: 175%;
   visibility: visible;
 }
 

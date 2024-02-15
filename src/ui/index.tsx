@@ -62,7 +62,7 @@ render(setup, {
         left: 0,
         width: 100,
       },
-      showBoundingBox: true,
+      // showBoundingBox: true,
     });
 
     board.layout('players', {
@@ -128,6 +128,27 @@ render(setup, {
           <div className="score">{zone.player!.score}</div>
         </div>
       )
+    });
+
+    board.all(Plot).appearance({
+      render: plot => {
+        if (plot.blocker) { return (
+          // <>
+          <div className="blocker">
+            {
+            (plot.blocker === 'orthogonal') 
+              ? 'Orthogonal'
+            : ((plot.blocker === 'not orthogonal')
+              ? 'Not orthogonal'
+            : `Blocked by a ${ plot.blocker?.current }`)
+            }
+          </div>
+          //   {/*<div>X</div>*/}
+          //   </>
+          // )} else { return (
+          //   <div>{`(${plot.column}, ${plot.row})`}</div>
+        )}
+      }
     });
 
     board.all(Space, (p) => p.name === 'plot' &&  ((p.row + p.column) % 2)).forEach((p) => p.gridparity = 'odd');
