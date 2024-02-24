@@ -63,8 +63,7 @@ export { Space };
 export class Plot extends Space {
   row: number;
   column: number;
-  gridparity: string = ['even', 'odd'].at((this.row + this.column) % 2)!;
-
+  gridparity: string = ''; // ['even', 'odd'].at((this.row + this.column) % 2)!; // happens too soon?
 
 
   // HACK STUB DRUNK FIXLATER
@@ -185,9 +184,10 @@ export class SprawlDie extends Die {
   //   return false;
   // }
 
-  // technically returns valid spaces, which might include the cup, which is not a plot.
 
+  // technically returns valid spaces, which might include the cup, which is not a plot.
   validPlots () {
+    console.log(`valid plots for ${ this.player.name }'s ${ this.current }?`);
     const cup = this.player.my('cup')!;
     const myPlots = $.land.all(Plot).filter((p) => {delete p.blocker; return p.first(SprawlDie)?.player === this.player});
     const myStakes = myPlots.filter((p) => p.first(SprawlDie)!.current === 1);
@@ -201,7 +201,7 @@ export class SprawlDie extends Die {
       // console.log(`found ${ myNeighbs.length } Ns and ${ unblockedNeighbors.length } un, for ${ myNeighbs.length - unblockedNeighbors.length } blocked Ns`);
       const claims = myNeighbs.filter((p) => !p.availableFor(this)).forEach((p) => {
         if (!p.has(SprawlDie)) {
-          // console.log(`Blocking ${p.column}, ${p.row} with ${p.blockingClaim(this)?.current}` );
+          console.log(`Blocking ${p.column}, ${p.row} with ${p.blockingClaim(this)?.current} (total: ${this.board.all(Plot, (p) => !!p.blocker).length } blockers)` );
           p.blocker = p.blockingClaim(this);
         }
       }
@@ -405,6 +405,7 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
             : `${player} has no place to ${building.verb()} a ${building.noun()}`)
       })
     ).do(({claim, building, rotate}) => {
+      console.log(`have ${ board.all(Plot, (p) => !!p.blocker).length } oustanding blockers.`)
       if (claim === player.my('cup')) {
         player.my('roll')!.all(SprawlDie).forEach((d) => d.putInto(claim));
       } else {

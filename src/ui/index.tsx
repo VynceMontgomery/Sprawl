@@ -182,10 +182,12 @@ render(setup, {
     })
 
     board.all(Plot).forEach((plot: Plot) => {
+      plot.gridparity = plot.gridparity || ['even', 'odd'].at(((plot.row) + (plot.column))%2)!;
+
       let expn: string = '';
       let renderfn = () => <div></div>;
 
-      if (plot.blocker || plot.claimsAgainst()) {
+      if (plot.blocker) {
         console.log (`have blocker: ${ plot.blocker }`);
         if (plot.blocker === 'orthogonal') {
           expn = 'Orthogonal';
@@ -204,7 +206,8 @@ render(setup, {
 
       if (plot.has(SprawlDie)) {
         const d = plot.first(SprawlDie)!;
-        console.log(`have die: ${ d.player.name }'s ${ d.current }.`);
+        // console.log(`have die: ${ d.player.name }'s ${ d.current }.`);
+
         // const stringbits = {
         //   runs : { twisted: 'Because it is twisted, it runs', 
         //               asis: 'It runs', }, 
