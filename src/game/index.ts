@@ -45,6 +45,11 @@ class SprawlBoard extends Board<SprawlPlayer, SprawlBoard> {
    * Any overall properties of your game go here
    */
   phase: number = 0;
+  countBlockedPlots () {return this.all(Plot, (p) => !!p.blocker).length}
+  touchPlots() {
+    const touchpoint = Math.floor(10000 * Math.random());
+    this.all(Plot).forEach(p => p.touchpoint = touchpoint);
+  }
 }
 
 const { Space, Piece, Die } = createBoardClasses<SprawlPlayer, SprawlBoard>();
@@ -64,7 +69,7 @@ export class Plot extends Space {
   row: number;
   column: number;
   gridparity: string = ''; // ['even', 'odd'].at((this.row + this.column) % 2)!; // happens too soon?
-
+  touchpoint: number = 10000;
 
   // HACK STUB DRUNK FIXLATER
   // isAdjacentTo (target: Plot) {
@@ -169,6 +174,8 @@ export class SprawlDie extends Die {
     return ['','plant','pave','erect','plow','set','build'][this.current];
   }
 
+  toString () {return `${ this.player.name }'s ${ this.noun() }`}
+
   // pointsTo (spot: Plot) {
   //   const here = this.container(Plot);
   //   if (here.isAdjacentTo(spot)
@@ -187,7 +194,7 @@ export class SprawlDie extends Die {
 
   // technically returns valid spaces, which might include the cup, which is not a plot.
   validPlots () {
-    console.log(`valid plots for ${ this.player.name }'s ${ this.current }?`);
+    // console.log(`valid plots for ${ this }? currently have ${this.board.all(Plot, (p) => !!p.blocker).length } blocked plots.`);
     const cup = this.player.my('cup')!;
     const myPlots = $.land.all(Plot).filter((p) => {delete p.blocker; return p.first(SprawlDie)?.player === this.player});
     const myStakes = myPlots.filter((p) => p.first(SprawlDie)!.current === 1);
@@ -263,10 +270,14 @@ export class SprawlDie extends Die {
       console.log("pretty much a panic");
     }
 
-    console.log(`there are ${this.board.all(Plot, (p) => !!p.blocker).length } blocked plots for ${this.player}'s ${this.current}`);
+    // console.log(`there are ${this.board.all(Plot, (p) => !!p.blocker).length } blocked plots for ${this.player}'s ${this.current}`);
     // FIXME can be removed in some future core (current 0.0.91);
     valids = valids.filter((v, i, a) => i === a.indexOf(v));
     // if (valids.length < 2) console.log(`few options for ${this.current}: `, valids);
+
+    this.board.touchPlots();
+    console.log(`now at tp: ${ this.board.first(Plot)!.touchpoint }`);
+
     if (valids.length < 1) { 
       // console.log(`should return instead`, cup);
       return [cup];
@@ -320,15 +331,19 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
     Plot, 
     'plot',
     );
-  Land.all('plot').forEach((plot: Plot) => plot.onEnter(SprawlDie, d => {
-    plot.adjacencies().forEach((p: Plot) => p.claimCache = []);
-    if (d.current === 1) {
-      d.player.my('reserve')!.first(SprawlDie)?.putInto(d.player.my('cup')!);
-    }
-  }));
-  Land.all('plot').forEach((plot: Plot) => plot.onExit(SprawlDie, d => {
-    plot.adjacencies().forEach((p: Plot) => p.claimCache = []);
-  }));
+  Land.all('plot').forEach((plot: Plot) => {
+    plot.gridparity = ['even', 'odd'].at(((plot.row) + (plot.column))%2)!;
+
+    plot.onEnter(SprawlDie, d => {
+      plot.adjacencies().forEach((p: Plot) => p.claimCache = []);
+      if (d.current === 1) {
+        d.player.my('reserve')!.first(SprawlDie)?.putInto(d.player.my('cup')!);
+      }});
+
+    plot.onExit(SprawlDie, d => {
+      plot.adjacencies().forEach((p: Plot) => p.claimCache = []);
+    });
+  });
 
   const pp = board.create(Space, 'players');
 
