@@ -183,13 +183,10 @@ render(setup, {
 
     board.all(Plot).appearance({
       render: (plot) => {
-        plot.gridparity = plot.gridparity || ['even', 'odd'].at(((plot.row) + (plot.column))%2)!;
-        console.log(`re-rendering ${plot.gridparity} plot ${ plot.row }, ${ plot.column } at ${ plot.touchpoint }`);
-
         let expn: string = '';
 
         if (plot.blocker) {
-          console.log (`have blocker: ${ plot.blocker }`);
+          // console.log (`have blocker: ${ plot.blocker }`);
           if (plot.blocker === 'orthogonal') {
             expn = 'Orthogonal';
           } else if (plot.blocker === 'not orthogonal') {
@@ -209,15 +206,11 @@ render(setup, {
         if (plot.has(SprawlDie)) {
           const d = plot.first(SprawlDie)!;
           const blockstext = [3, 6].includes(d.current) ?
-                                (d.twisted 
-                                  ? ' Because it is twisted, it runs ' 
-                                  + ( d.current === 6 ? 'East-West ' : 'Northeast-Southwest ')
-                                  : " It runs "
-                                  + ( d.current === 6 ? 'North-South ' : 'Northwest-Southeast ') ) 
-                                + ' and blocks the next plot in each of those directions.'
+                                (" It runs " + d.facing()
+                                + ' and blocks the next plot in each of those directions.')
                               : '';
 
-          const scoretext = `Each ${d.noun()} scores ` + ( // <-- ucfirst that, maybe also big bold it? 
+          const scoretext = `Each ${d.noun()} scores ` + (
                   d.current === 1
                   ? ` nothing, but it holds the space for you to build on later.`
                   : d.current === 6
@@ -232,7 +225,7 @@ render(setup, {
           return (
               <>
               <div>
-                This plot is occupied by { d.player.name }'s { d.noun() }.
+                This plot is occupied by { d.toString() }.
                 { blockstext }
               </div>
               <div>
@@ -253,139 +246,6 @@ render(setup, {
       },
     });
 
-    // board.all(Plot).forEach((plot) => {
-    //   console.log(`re-rendering plot ${ plot.row }, ${ plot.column } at ${ plot.touchpoint }`);
-    //   plot.gridparity = plot.gridparity || ['even', 'odd'].at(((plot.row) + (plot.column))%2)!;
-
-    //   let expn: string = '';
-
-    //   if (plot.blocker) {
-    //     console.log (`have blocker: ${ plot.blocker }`);
-    //     if (plot.blocker === 'orthogonal') {
-    //       expn = 'Orthogonal';
-    //     } else if (plot.blocker === 'not orthogonal') {
-    //       expn = 'Not orthogonal';
-    //     } else if (plot.blocker instanceof SprawlDie) {
-    //       expn = `Blocked by a ${ plot.blocker.current }`;
-    //     }
-    //   }
-
-    //   if (plot.has(SprawlDie)) {
-    //     const d = plot.first(SprawlDie)!;
-    //     // console.log(`have die: ${ d.player.name }'s ${ d.current }.`);
-
-    //     // const stringbits = {
-    //     //   runs : { twisted: 'Because it is twisted, it runs', 
-    //     //               asis: 'It runs', }, 
-    //     //   fence: { twisted: 'Northeast-Southwest', 
-    //     //               asis: 'Northwest-Southeast', },
-    //     //   wall : { twisted: 'East-West',
-    //     //               asis: 'North-South', },          
-    //     // }
-
-    //     // let runtext = '';
-    //     // if [3,6].includes(d.current) {
-    //     //   let tk = d.twisted ? 'twisted' : 'asis';
-    //     //   runtext = `${stringbits[runs][tk]} ${stringbits[$d.noun() as keyof typeof stringbits][tk]}` +
-    //     //              ' and blocks the next plot in each of those direcions.'                     
-    //     // }
-    //     const blockstext = [3, 6].includes(d.current) ?
-    //                           (d.twisted 
-    //                             ? ' Because it is twisted, it runs ' 
-    //                             + ( d.current === 6 ? 'East-West ' : 'Northeast-Southwest ')
-    //                             : " It runs "
-    //                             + ( d.current === 6 ? 'North-South ' : 'Northwest-Southeast ') ) 
-    //                           + ' and blocks the next plot in each of those directions.'
-    //                         : '';
-
-    //     const scoretext = `Each ${d.noun()} scores ` + ( // <-- ucfirst that, maybe also big bold it? 
-    //             d.current === 1
-    //             ? ` nothing, but it holds the space for you to build on later.`
-    //             : d.current === 6
-    //             ? ` one point for each adjacent, non-${d.noun()} die belonging to the same player.`
-    //             : ` its face value (${ d.current }).`
-    //           ) + ( d.current === 2
-    //             ? ` In addition, there is a bonus of one point for each opponent die that touches any number of your ${ d.noun() }s. `
-    //             : d.current === 3 
-    //             ? ` In addition, there is a bonus of one point for each field - belonging to any player - that touches any number of your ${ d.noun() }s. `
-    //             : '')
-    //           ;
-    //     plot.appearance({
-    //       render: () => 
-    //         <div className="blocker">
-    //           { expn }
-    //         </div>,
-    //       info: () =>
-    //         <>
-    //         <div>
-    //           This plot is occupied by { d.player.name }'s { d.noun() }.
-    //           { blockstext }
-    //         </div>
-    //         <div>
-    //           { scoretext }
-    //         </div>
-    //         </>
-    //     })
-    //   } else {
-    //     plot.appearance({
-    //       render: () =>
-    //         <div className="blocker">
-    //           { expn }
-    //         </div>,
-    //       info: () => 
-    //         <div>
-    //           This plot is empty.
-    //           { plot.claimsAgainst().length ? ` Placement here may be affected by these nearby claims: ` 
-    //             + plot.claimsAgainst().map((c) => c.player.name + "'s " + c.noun()).join(', ')
-    //             :''}
-    //         </div>
-    //     });
-    //   }
-    // });
-
-    //   info: plot => {
-    //     if (plot.has(SprawlDie)) {
-    //       const d = plot.first(SprawlDie)!;
-    //       return (
-    //         <>
-    //         <div>
-    //           This plot is occupied by { d.player.name }'s { d.noun() }.
-    //           { [3, 6].includes(d.current) ?
-    //             (d.twisted 
-    //               ? ' Because it is twisted, it runs ' 
-    //               + ( d.current === 6 ? 'East-West ' : 'Northeast-Southwest ')
-    //               : " It runs "
-    //               + ( d.current === 6 ? 'North-South ' : 'Northwest-Southeast ') ) 
-    //             + ' and blocks the next plot in each of those directions.'
-    //           : ''}
-    //         </div>
-    //         <div>
-    //           {d.noun()}s score { // <-- ucfirst that, maybe also big bold it? 
-    //             d.current === 1 
-    //             ? ` nothing, but they hold the space for you to build on later.`
-    //             : d.current === 6
-    //             ? ` one point for each adjacent, non-${d.noun()} die belonging to the same player.`
-    //             : ` their face value (${ d.current }).`
-    //           }
-    //           { (d.current === 2
-    //             ? ` In addition, there is a bonus of one point for each opponent die that touches any number of your ${ d.noun() }s. `
-    //             : d.current === 3 
-    //             ? ` In addition, there is a bonus of one point for each field - beloning to any player - that touches any number of your ${ d.noun() }s. `
-    //             : '')
-    //           }
-    //         </div>
-    //         </>
-    //       );
-    //     } else { return (
-    //       <div>
-    //         This plot is empty.
-    //         { plot.claimsAgainst()?.length ? ` Placement here may be affected by these nearby claims: ` 
-    //           + plot.claimsAgainst()?.map((c) => c.player.name + "'s " + c.noun()).join(', ')
-    //           :''}
-    //       </div>
-    //     )}
-    //   },
-    // });
 
     board.all(SprawlDie).appearance({
       className: 'Die'

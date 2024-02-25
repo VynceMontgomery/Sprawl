@@ -46,10 +46,6 @@ class SprawlBoard extends Board<SprawlPlayer, SprawlBoard> {
    */
   phase: number = 0;
   countBlockedPlots () {return this.all(Plot, (p) => !!p.blocker).length}
-  touchPlots() {
-    const touchpoint = Math.floor(10000 * Math.random());
-    this.all(Plot).forEach(p => p.touchpoint = touchpoint);
-  }
 }
 
 const { Space, Piece, Die } = createBoardClasses<SprawlPlayer, SprawlBoard>();
@@ -69,7 +65,6 @@ export class Plot extends Space {
   row: number;
   column: number;
   gridparity: string = ''; // ['even', 'odd'].at((this.row + this.column) % 2)!; // happens too soon?
-  touchpoint: number = 10000;
 
   // HACK STUB DRUNK FIXLATER
   // isAdjacentTo (target: Plot) {
@@ -163,15 +158,32 @@ export class Plot extends Space {
 }
 
 export class SprawlDie extends Die {
+  static facingmap = {
+    'fence': 'Northwest-Southeast',
+    'fencetwisted': 'Northeast-Southwest',
+    'wall' : 'North-South',
+    'walltwisted': 'East-West',
+  };
+
   player: SprawlPlayer;
   twisted: boolean;
 
-  noun () {
+  noun (): string {
     return ['','stake','road','fence','field','fire','wall'][this.current];
   }
 
-  verb () {
+  verb (): string {
     return ['','plant','pave','erect','plow','set','build'][this.current];
+  }
+
+  facingkey () {
+    if (![3, 6].includes(this.current)) return (undefined);
+    return (`${this.noun()}${this.twisted ? 'twisted' : ''}`);
+  }
+
+  facing (): string {
+    if (![3, 6].includes(this.current)) return ('');
+    return SprawlDie.facingmap[this.facingkey() as keyof typeof SprawlDie.facingmap];
   }
 
   toString () {return `${ this.player.name }'s ${ this.noun() }`}
@@ -208,7 +220,7 @@ export class SprawlDie extends Die {
       // console.log(`found ${ myNeighbs.length } Ns and ${ unblockedNeighbors.length } un, for ${ myNeighbs.length - unblockedNeighbors.length } blocked Ns`);
       const claims = myNeighbs.filter((p) => !p.availableFor(this)).forEach((p) => {
         if (!p.has(SprawlDie)) {
-          console.log(`Blocking ${p.column}, ${p.row} with ${p.blockingClaim(this)?.current} (total: ${this.board.all(Plot, (p) => !!p.blocker).length } blockers)` );
+          // console.log(`Blocking ${p.column}, ${p.row} with ${p.blockingClaim(this)?.current} (total: ${this.board.all(Plot, (p) => !!p.blocker).length } blockers)` );
           p.blocker = p.blockingClaim(this);
         }
       }
@@ -274,9 +286,6 @@ export class SprawlDie extends Die {
     // FIXME can be removed in some future core (current 0.0.91);
     valids = valids.filter((v, i, a) => i === a.indexOf(v));
     // if (valids.length < 2) console.log(`few options for ${this.current}: `, valids);
-
-    this.board.touchPlots();
-    console.log(`now at tp: ${ this.board.first(Plot)!.touchpoint }`);
 
     if (valids.length < 1) { 
       // console.log(`should return instead`, cup);
@@ -410,8 +419,11 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
       },
     ).chooseFrom(
       'rotate',
-      ({building}) => ['as is'].concat(([3,6].includes(building.current) ? ['twisted'] : [])),
-      {prompt: 'would you like to twist it?'},
+      ({building}) => ([3,6].includes(building.current)
+        ? { 'asis' : SprawlDie.facingmap[building.noun() as keyof typeof SprawlDie.facingmap],
+            'twisted' : SprawlDie.facingmap[building.noun() + 'twisted' as keyof typeof SprawlDie.facingmap] }
+        : ['']),
+      {prompt: 'Running in which direction?'},
     ).message(`{{ message }}`, ({claim, building}) => ({
         message: ( claim.row && claim.column)
           ? `${player} ${building.verb()}s a ${building.noun()} at (${claim.column}, ${claim.row})`
@@ -420,7 +432,7 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
             : `${player} has no place to ${building.verb()} a ${building.noun()}`)
       })
     ).do(({claim, building, rotate}) => {
-      console.log(`have ${ board.all(Plot, (p) => !!p.blocker).length } oustanding blockers.`)
+      // console.log(`have ${ board.all(Plot, (p) => !!p.blocker).length } outstanding blockers.`);
       if (claim === player.my('cup')) {
         player.my('roll')!.all(SprawlDie).forEach((d) => d.putInto(claim));
       } else {
@@ -433,6 +445,8 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
 
         if (rotate === 'twisted') {
           building.twisted = true;
+        // } else if (rotate) {
+        //   console.log(`got rotate ${ rotate }`);
         }
 
         building.putInto(claim);
@@ -461,6 +475,7 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
           //     console.log(`well... ${well}`);
           //     console.log(game.announce('EndGame'));
           //   }
+              game.announce('EndGame');
               board.phase = 2;
             }
           }
