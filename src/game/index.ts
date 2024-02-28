@@ -22,21 +22,22 @@ export class SprawlPlayer extends Player<SprawlPlayer, SprawlBoard> {
         if ([2,3,4].includes(d.current)) {
           scoreObj[d.noun() as keyof typeof scoreObj] += d.current;
         } else if (6 === d.current) {
-          scoreObj[d.noun() as keyof typeof scoreObj] += d.container(Plot)!.adjies().flatMap((p) => p.all(SprawlDie, {player: this}).filter((n) => n.current != 6)).length
+          scoreObj[d.noun() as keyof typeof scoreObj] += 
+            d.container(Plot)!.adjacencies().flatMap((p) => 
+              p.all(SprawlDie, {player: this}).filter((n) => n.current != 6)
+            ).length
         }});
 
       scoreObj['roadBonus'] = $.land.all(SprawlDie, (d) => d.player !== this).filter((d) => 
-        d.container(Plot)!.adjies().filter((p) => 
+        d.container(Plot)!.adjacencies().filter((p) => 
           p.has(SprawlDie, {player: this, current: 2})).length > 0).length;
 
       scoreObj['fenceBonus'] = $.land.all(SprawlDie, {current: 4}).filter((d) => 
-        d.container(Plot)!.adjies().filter((p) => 
+        d.container(Plot)!.adjacencies().filter((p) => 
           p.has(SprawlDie, {player: this, current: 3})).length > 0).length;
 
-      // console.log(`${player.name} score: base ${baseScore} plus bonuses: road: ${roadBonus} and fence: ${fenceBonus}`);
       this.scoreDetail = scoreObj;
       this.score = ['road', 'fence', 'field', 'wall', 'roadBonus', 'fenceBonus'].reduce((a: number, s: keyof typeof scoreObj) => a + scoreObj[s], 0);
-      // console.log("player new score: ", this.name, baseScore + roadBonus + fenceBonus, this.score);
   };
 };
 
@@ -56,6 +57,8 @@ export { Space };
  * Define your game's custom pieces and spaces.
  */
 
+// This might serve a purpose if I could understand how to use it properly
+//
 // export interface Claim {
 //   player: Player,
 //   current: 1|2|3|4|5|6,
@@ -66,27 +69,23 @@ export class Plot extends Space {
   column: number;
   gridparity: string = ''; // ['even', 'odd'].at((this.row + this.column) % 2)!; // happens too soon?
 
-  // HACK STUB DRUNK FIXLATER
-  // isAdjacentTo (target: Plot) {
-  //   // return (Math.abs(this.row - target.row) <= 1 && Math.abs(this.column - target.column <= 1));
-  //   return this.isOrthoTo(target) || this.isDiagonalTo(target);
-  // }
+  // HACK STUB FIXME
+  // 
+  // test wheher there are better way around this now that provided isAdjacent works
 
   isOrthoTo (target: Plot) {
     return (   Math.abs(this.row - target.row) == 1 && Math.abs(this.column - target.column) == 0
             || Math.abs(this.row - target.row) == 0 && Math.abs(this.column - target.column) == 1);
-    // return this.distanceTo(target) === 1;
   }
 
   isDiagonalTo (target: Plot) {
     return (Math.abs(this.row - target.row) == 1 && Math.abs(this.column - target.column) == 1);
-    // return (this.distanceTo(target) > 1.2 && this.distanceTo(target) < 1.8);
-    // return this.distanceTo(target) === 2 && this.isAdjacentTo(target);
   }
 
-  adjies () {
-    return this.others(Plot).filter((p) => this.isAdjacentTo(p));
-  }
+  // remove?
+  // adjies () {
+  //   return this.others(Plot).filter((p) => this.isAdjacentTo(p));
+  // }
 
   orthies () {
     return this.others(Plot).filter((p) => this.isOrthoTo(p));
@@ -210,7 +209,7 @@ export class SprawlDie extends Die {
     const cup = this.player.my('cup')!;
     const myPlots = $.land.all(Plot).filter((p) => {delete p.blocker; return p.first(SprawlDie)?.player === this.player});
     const myStakes = myPlots.filter((p) => p.first(SprawlDie)!.current === 1);
-    const myNeighbs = myPlots.flatMap((p) => p.adjies()).filter((p) => ! myPlots.includes(p)).filter((v, i, a) => i === a.indexOf(v));
+    const myNeighbs = myPlots.flatMap((p) => p.adjacencies(Plot)).filter((p) => ! myPlots.includes(p)).filter((v, i, a) => i === a.indexOf(v));
     const myOrthos = myPlots.flatMap((p) => p.orthies());
     const myDiags = myPlots.flatMap((p) => p.diagies());
 
@@ -337,7 +336,7 @@ export default createGame(SprawlPlayer, SprawlBoard, game => {
       diagonalDistance: 1.5,
       style: 'square',
     },
-    Plot, 
+    Plot,
     'plot',
     );
   Land.all('plot').forEach((plot: Plot) => {
